@@ -894,91 +894,74 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ──────────────────────────────── Server Browser — Expand Notch ── */
-.server-notch {
+/* ──────────────────────────────── Server Browser ────────────────── */
+.server-container {
   position: fixed;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
   z-index: 110;
-  width: 64px;
-  height: 22px;
-  border-radius: 0 0 10px 10px;
-  background: #111;
+  background: #0a0a0a;
+  overflow: hidden;
+  transition:
+    width 450ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 450ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-radius 350ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 300ms ease;
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.06);
+}
+
+.server-container:not(.expanded) {
+  cursor: pointer;
+}
+
+.server-container:not(.expanded):hover {
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.12);
+}
+
+.server-container.expanded {
+  box-shadow: none;
+}
+
+/* Notch trigger (visible when collapsed) */
+.server-notch-trigger {
+  width: 100%;
+  height: 100%;
+  background: none;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 1px;
-  transition: width 200ms ease, height 200ms ease, box-shadow 200ms ease;
-  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.06);
 }
 
-.server-notch:hover {
-  width: 72px;
-  height: 26px;
-  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.12);
+.notch-arrow-icon {
+  opacity: 0.7;
+  transition: opacity 150ms ease;
 }
 
-.server-notch.expanded {
-  pointer-events: auto;
+.server-notch-trigger:hover .notch-arrow-icon {
+  opacity: 1;
 }
 
-.notch-arrow {
-  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* White expand overlay */
-.server-expand-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 105;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.server-expand-overlay::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: #0a0a0a;
-  clip-path: inset(0 calc(50% - 32px) 100% calc(50% - 32px) round 0 0 10px 10px);
-  transition: clip-path 500ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.server-expand-overlay.open {
-  pointer-events: auto;
-}
-
-.server-expand-overlay.open::before {
-  clip-path: inset(0 0 0 0 round 0);
-}
-
-.server-expand-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-/* Content */
-.server-expand-content {
-  position: relative;
-  z-index: 1;
+/* Expanded content */
+.server-container-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
+  width: 100%;
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 250ms ease;
+  padding: 40px 20px;
 }
 
-.server-expand-content.visible {
+.server-container-content.visible {
   opacity: 1;
 }
 
-.server-expand-title {
+.server-container-title {
   font-size: 32px;
   font-weight: 800;
   color: #f0f0f0;
@@ -986,13 +969,13 @@ body {
   letter-spacing: -0.03em;
 }
 
-.server-expand-subtitle {
+.server-container-subtitle {
   font-size: 14px;
-  color: #666;
+  color: #555;
   margin: 0 0 48px;
 }
 
-.server-expand-grid {
+.server-container-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, 120px);
   gap: 20px;
@@ -1000,7 +983,7 @@ body {
   max-width: 600px;
 }
 
-.server-expand-item {
+.server-grid-item {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1015,16 +998,16 @@ body {
   transform: scale(0.5) translateY(20px);
 }
 
-.server-expand-item.pop-in {
+.server-grid-item.pop-in {
   animation: springPopIn 500ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-.server-expand-item:hover {
+.server-grid-item:hover {
   background: rgba(255, 255, 255, 0.05);
   transform: scale(1) translateY(-2px);
 }
 
-.server-expand-circle {
+.server-grid-circle {
   width: 68px;
   height: 68px;
   border-radius: 50%;
@@ -1040,31 +1023,31 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.server-expand-item:hover .server-expand-circle {
+.server-grid-item:hover .server-grid-circle {
   border-radius: 20px;
   background: #252525;
   color: #eee;
 }
 
-.server-expand-item.active .server-expand-circle {
+.server-grid-item.active .server-grid-circle {
   background: white;
   color: black;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.15);
 }
 
-.server-expand-circle.add {
+.server-grid-circle.add {
   border: 2px dashed rgba(255, 255, 255, 0.12);
   background: transparent;
   color: #555;
 }
 
-.server-expand-item.add-server:hover .server-expand-circle.add {
+.server-grid-item.add-server:hover .server-grid-circle.add {
   border-color: rgba(255, 255, 255, 0.25);
   color: #999;
   background: rgba(255, 255, 255, 0.03);
 }
 
-.server-expand-label {
+.server-grid-label {
   font-size: 12px;
   font-weight: 600;
   color: #888;
@@ -1072,12 +1055,36 @@ body {
   white-space: nowrap;
 }
 
-.server-expand-item:hover .server-expand-label {
+.server-grid-item:hover .server-grid-label {
   color: #ccc;
 }
 
-.server-expand-item.active .server-expand-label {
+.server-grid-item.active .server-grid-label {
   color: white;
+}
+
+/* Close button at bottom */
+.server-close-btn {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.server-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(-50%) scale(1.08);
 }
 
 @keyframes springPopIn {

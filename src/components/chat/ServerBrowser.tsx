@@ -10,7 +10,7 @@ type ServerBrowserProps = {
 };
 
 export function ServerBrowser({ servers, activeServerId, onServerSelect }: ServerBrowserProps) {
-    const [open, setOpen] = useState(false);
+    const [expanded, setExpanded] = useState(false);
     const [showItems, setShowItems] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -21,119 +21,131 @@ export function ServerBrowser({ servers, activeServerId, onServerSelect }: Serve
         }
     }, []);
 
-    /* 750ms hover delay */
+    /* 750ms hover to open */
     const handleNotchEnter = useCallback(() => {
+        if (expanded) return;
         clearTimer();
-        hoverTimer.current = setTimeout(() => {
-            setOpen(true);
-        }, 750);
-    }, [clearTimer]);
+        hoverTimer.current = setTimeout(() => setExpanded(true), 750);
+    }, [clearTimer, expanded]);
 
     const handleNotchLeave = useCallback(() => {
         clearTimer();
     }, [clearTimer]);
 
-    /* Click = instant toggle */
+    /* Click toggle */
     const handleNotchClick = useCallback(() => {
         clearTimer();
-        setOpen((v) => !v);
-    }, [clearTimer]);
+        if (!expanded) setExpanded(true);
+    }, [clearTimer, expanded]);
 
-    /* After the white expand animation finishes, pop in the items */
+    /* After container finishes expanding, pop in items */
     useEffect(() => {
-        if (open) {
-            const t = setTimeout(() => setShowItems(true), 350);
+        if (expanded) {
+            const t = setTimeout(() => setShowItems(true), 450);
             return () => clearTimeout(t);
         } else {
             setShowItems(false);
         }
-    }, [open]);
+    }, [expanded]);
+
+    /* Escape key */
+    useEffect(() => {
+        if (!expanded) return;
+        const handler = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                setShowItems(false);
+                setTimeout(() => setExpanded(false), 100);
+            }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [expanded]);
+
+    const handleClose = useCallback(() => {
+        setShowItems(false);
+        setTimeout(() => setExpanded(false), 100);
+    }, []);
 
     const handleSelect = useCallback(
         (id: ServerId) => {
             onServerSelect(id);
             setShowItems(false);
-            setTimeout(() => setOpen(false), 150);
+            setTimeout(() => setExpanded(false), 150);
         },
         [onServerSelect]
     );
 
-    const handleClose = useCallback(() => {
-        setShowItems(false);
-        setTimeout(() => setOpen(false), 100);
-    }, []);
-
     return (
-        <>
-            {/* Notch pill */}
-            <button
-                className={`server-notch ${open ? "expanded" : ""}`}
-                onClick={handleNotchClick}
-                onMouseEnter={handleNotchEnter}
-                onMouseLeave={handleNotchLeave}
-                aria-label="Browse servers"
-            >
-                <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    className="notch-arrow"
-                    style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        <div
+            className={`server-container ${expanded ? "expanded" : ""}`}
+            style={{
+                width: expanded ? "100vw" : "64px",
+                height: expanded ? "100vh" : "22px",
+                borderRadius: expanded ? "0px" : "0 0 10px 10px",
+            }}
+        >
+            {/* Notch click zone (only when collapsed) */}
+            {!expanded && (
+                <button
+                    className="server-notch-trigger"
+                    onClick={handleNotchClick}
+                    onMouseEnter={handleNotchEnter}
+                    onMouseLeave={handleNotchLeave}
+                    aria-label="Browse servers"
                 >
-                    <path
-                        d="M3 5.5L7 9.5L11 5.5"
-                        stroke="white"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                </svg>
-            </button>
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="notch-arrow-icon">
+                        <path d="M3 5.5L7 9.5L11 5.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </button>
+            )}
 
-            {/* Expanding white overlay */}
-            <div className={`server-expand-overlay ${open ? "open" : ""}`}>
-                {/* Close zone — clicking outside content closes */}
-                <div className="server-expand-backdrop" onClick={handleClose} />
+            {/* Expanded content */}
+            {expanded && (
+                <div className={`server-container-content ${showItems ? "visible" : ""}`}>
+                    <h2 className="server-container-title">Servers</h2>
+                    <p className="server-container-subtitle">Select a server to jump in</p>
 
-                <div className={`server-expand-content ${showItems ? "visible" : ""}`}>
-                    <h2 className="server-expand-title">Servers</h2>
-                    <p className="server-expand-subtitle">Select a server to jump in</p>
-
-                    <div className="server-expand-grid">
+                    <div className="server-container-grid">
                         {servers.map((server, i) => {
                             const active = server.id === activeServerId;
                             return (
                                 <button
                                     key={server.id}
-                                    className={`server-expand-item ${active ? "active" : ""} ${showItems ? "pop-in" : ""}`}
+                                    className={`server-grid-item ${active ? "active" : ""} ${showItems ? "pop-in" : ""}`}
                                     onClick={() => handleSelect(server.id)}
                                     style={{ animationDelay: showItems ? `${i * 80}ms` : "0ms" }}
                                 >
-                                    <div className="server-expand-circle">
+                                    <div className="server-grid-circle">
                                         <span>{server.badge}</span>
                                     </div>
-                                    <span className="server-expand-label">{server.label}</span>
+                                    <span className="server-grid-label">{server.label}</span>
                                 </button>
                             );
                         })}
 
-                        {/* Add server */}
+                        {/* Add server placeholder */}
                         <button
-                            className={`server-expand-item add-server ${showItems ? "pop-in" : ""}`}
+                            className={`server-grid-item add-server ${showItems ? "pop-in" : ""}`}
                             style={{ animationDelay: showItems ? `${servers.length * 80}ms` : "0ms" }}
                         >
-                            <div className="server-expand-circle add">
+                            <div className="server-grid-circle add">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                                     <line x1="12" y1="5" x2="12" y2="19" />
                                     <line x1="5" y1="12" x2="19" y2="12" />
                                 </svg>
                             </div>
-                            <span className="server-expand-label">Add Server</span>
+                            <span className="server-grid-label">Add Server</span>
                         </button>
                     </div>
+
+                    {/* Bottom close arrow */}
+                    <button className="server-close-btn" onClick={handleClose} aria-label="Close">
+                        <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+                            <path d="M3 8.5L7 4.5L11 8.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
                 </div>
-            </div>
-        </>
+            )}
+        </div>
     );
 }
