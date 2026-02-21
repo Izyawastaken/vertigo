@@ -2,10 +2,10 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AppIntro } from "@/components/intro/AppIntro";
-import { ServerRail } from "@/components/chat/ServerRail";
 import { ChannelSidebar } from "@/components/chat/ChannelSidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { MemberList } from "@/components/chat/MemberList";
+import { ServerBrowser } from "@/components/chat/ServerBrowser";
 import {
   SERVERS,
   CHANNELS_BY_SERVER,
@@ -127,11 +127,6 @@ export default function Home() {
       {introDone && (
         <>
           <div className="app-shell">
-            <ServerRail
-              servers={SERVERS}
-              activeServerId={activeServerId}
-              onServerSelect={handleServerSelect}
-            />
             <ChannelSidebar
               server={activeServer}
               channels={channels}
@@ -145,6 +140,13 @@ export default function Home() {
               onToggleMembers={handleToggleMembers}
             />
           </div>
+
+          {/* Top-center notch for server browser */}
+          <ServerBrowser
+            servers={SERVERS}
+            activeServerId={activeServerId}
+            onServerSelect={handleServerSelect}
+          />
 
           {/* Right-edge hover trigger for glancing at member list */}
           {!membersPinned && !membersHover && (
