@@ -83,7 +83,7 @@ export function ServerBrowser({ servers, activeServerId, onServerSelect }: Serve
                 >
                     <path
                         d="M3 5.5L7 9.5L11 5.5"
-                        stroke={open ? "black" : "white"}
+                        stroke="white"
                         strokeWidth="1.8"
                         strokeLinecap="round"
                         strokeLinejoin="round"
