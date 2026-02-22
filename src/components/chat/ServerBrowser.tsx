@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, type FormEvent } from "react";
 import type { Server } from "@/types/chat";
 
 type ServerBrowserProps = {
@@ -18,6 +18,8 @@ export function ServerBrowser({
 }: ServerBrowserProps) {
     const [expanded, setExpanded] = useState(false);
     const [showItems, setShowItems] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [draftName, setDraftName] = useState("");
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const clearTimer = useCallback(() => {
@@ -57,6 +59,7 @@ export function ServerBrowser({
         const handler = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 setShowItems(false);
+                setCreateOpen(false);
                 setTimeout(() => setExpanded(false), 100);
             }
         };
@@ -66,6 +69,8 @@ export function ServerBrowser({
 
     const handleClose = useCallback(() => {
         setShowItems(false);
+        setCreateOpen(false);
+        setDraftName("");
         setTimeout(() => setExpanded(false), 100);
     }, []);
 
@@ -73,21 +78,27 @@ export function ServerBrowser({
         (id: string) => {
             onServerSelect(id);
             setShowItems(false);
+            setCreateOpen(false);
+            setDraftName("");
             setTimeout(() => setExpanded(false), 150);
         },
         [onServerSelect]
     );
 
-    const handleCreateServer = useCallback(() => {
-        const label = window.prompt("Server name");
+    const handleCreateServer = useCallback((event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        const label = draftName.trim();
         if (!label) {
             return;
         }
 
         onCreateServer(label);
+        setCreateOpen(false);
+        setDraftName("");
         setShowItems(false);
         setTimeout(() => setExpanded(false), 150);
-    }, [onCreateServer]);
+    }, [draftName, onCreateServer]);
 
     return (
         <div
@@ -141,7 +152,7 @@ export function ServerBrowser({
                         <button
                             className={`server-grid-item add-server ${showItems ? "pop-in" : ""}`}
                             style={{ animationDelay: showItems ? `${servers.length * 80}ms` : "0ms" }}
-                            onClick={handleCreateServer}
+                            onClick={() => setCreateOpen(true)}
                         >
                             <div className="server-grid-circle add">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -152,6 +163,32 @@ export function ServerBrowser({
                             <span className="server-grid-label">Add Server</span>
                         </button>
                     </div>
+                    {createOpen && (
+                        <form className="server-create-panel" onSubmit={handleCreateServer}>
+                            <input
+                                type="text"
+                                className="server-create-input"
+                                placeholder="Server name"
+                                value={draftName}
+                                onChange={(event) => setDraftName(event.target.value)}
+                            />
+                            <div className="server-create-actions">
+                                <button
+                                    type="button"
+                                    className="server-create-cancel"
+                                    onClick={() => {
+                                        setCreateOpen(false);
+                                        setDraftName("");
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="server-create-submit">
+                                    Create Server
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
                     {/* Bottom close arrow */}
                     <button className="server-close-btn" onClick={handleClose} aria-label="Close">

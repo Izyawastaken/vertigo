@@ -14,7 +14,6 @@ export default function Home() {
   const {
     initialized,
     loading,
-    sendingMessage,
     error,
     introDone,
     servers,
@@ -38,7 +37,6 @@ export default function Home() {
     useShallow((state) => ({
       initialized: state.initialized,
       loading: state.loading,
-      sendingMessage: state.sendingMessage,
       error: state.error,
       introDone: state.introDone,
       servers: state.servers,
@@ -220,6 +218,7 @@ export default function Home() {
           {activeServer && (
             <div className="app-shell">
               <ChannelSidebar
+                key={activeServer.id}
                 server={activeServer}
                 channels={channels}
                 activeChannelId={activeChannel?.id ?? ""}
@@ -232,7 +231,6 @@ export default function Home() {
                 showMembers={membersPinned}
                 onToggleMembers={handleToggleMembers}
                 onSendMessage={handleSendMessage}
-                sendingMessage={sendingMessage}
               />
             </div>
           )}

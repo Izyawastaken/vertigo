@@ -280,7 +280,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
-    set({ sendingMessage: true, error: null });
+    const optimisticMessage: ChatMessage = {
+      id: `temp-${crypto.randomUUID()}`,
+      channelId,
+      author: "You",
+      avatar: "YO",
+      body: messageBody,
+      createdAt: Date.now(),
+    };
+
+    set((state) => ({
+      sendingMessage: true,
+      error: null,
+      messagesByChannel: {
+        ...state.messagesByChannel,
+        [channelId]: [
+          ...(state.messagesByChannel[channelId] ?? []),
+          optimisticMessage,
+        ],
+      },
+    }));
 
     try {
       const message = await callBackend<ChatMessage>("send_message", {
@@ -295,14 +314,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
         sendingMessage: false,
         messagesByChannel: {
           ...state.messagesByChannel,
-          [channelId]: [...(state.messagesByChannel[channelId] ?? []), message],
+          [channelId]: (state.messagesByChannel[channelId] ?? []).map(
+            (candidate) =>
+              candidate.id === optimisticMessage.id ? message : candidate
+          ),
         },
       }));
     } catch (error) {
-      set({
+      set((state) => ({
         sendingMessage: false,
         error: toErrorMessage(error),
-      });
+        messagesByChannel: {
+          ...state.messagesByChannel,
+          [channelId]: (state.messagesByChannel[channelId] ?? []).filter(
+            (candidate) => candidate.id !== optimisticMessage.id
+          ),
+        },
+      }));
       throw error;
     }
   },

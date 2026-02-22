@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { Channel, CreateChannelDraft, Server } from "@/types/chat";
 
 /* ── SVG Icons ── */
@@ -62,28 +62,52 @@ export function ChannelSidebar({
     onChannelSelect,
     onCreateChannel,
 }: ChannelSidebarProps) {
-    const categories = Array.from(new Set(channels.map((c) => c.category)));
+    const groupedChannels = useMemo(() => {
+        const groups = new Map<string, Channel[]>();
+
+        for (const channel of channels) {
+            const key = channel.category || "Channels";
+            const existing = groups.get(key);
+
+            if (existing) {
+                existing.push(channel);
+            } else {
+                groups.set(key, [channel]);
+            }
+        }
+
+        return Array.from(groups, ([category, items]) => ({
+            category,
+            channels: items,
+        }));
+    }, [channels]);
+
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const [createOpen, setCreateOpen] = useState(false);
+    const [draftName, setDraftName] = useState("");
+    const [draftType, setDraftType] = useState<"text" | "voice">("text");
 
     const toggleCategory = (cat: string) => {
         setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }));
     };
 
-    const handleCreateChannel = () => {
-        const name = window.prompt("Channel name");
+    const handleCreateChannel = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const name = draftName.trim();
+
         if (!name) {
             return;
         }
 
-        const createVoice = window.confirm(
-            "Create a voice channel? Click OK for voice, Cancel for text."
-        );
-
         onCreateChannel({
             name,
-            type: createVoice ? "voice" : "text",
-            category: createVoice ? "Voice Channels" : "Text Channels",
+            type: draftType,
+            category: draftType === "voice" ? "Voice Channels" : "Text Channels",
         });
+
+        setCreateOpen(false);
+        setDraftName("");
+        setDraftType("text");
     };
 
     return (
@@ -91,18 +115,52 @@ export function ChannelSidebar({
             {/* Server header */}
             <div className="sidebar-header">
                 <span className="sidebar-server-name">{server.label}</span>
-                <button className="sidebar-create-btn" onClick={handleCreateChannel} title="Create channel">
+                <button
+                    type="button"
+                    className={`sidebar-create-btn ${createOpen ? "active" : ""}`}
+                    onClick={() => setCreateOpen((value) => !value)}
+                    title="Create channel"
+                >
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                         <line x1="7" y1="3" x2="7" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                         <line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
                 </button>
             </div>
+            {createOpen && (
+                <form className="channel-create-panel" onSubmit={handleCreateChannel}>
+                    <input
+                        type="text"
+                        className="channel-create-input"
+                        placeholder="Channel name"
+                        value={draftName}
+                        onChange={(event) => setDraftName(event.target.value)}
+                    />
+                    <div className="channel-create-row">
+                        <button
+                            type="button"
+                            className={`channel-type-btn ${draftType === "text" ? "active" : ""}`}
+                            onClick={() => setDraftType("text")}
+                        >
+                            Text
+                        </button>
+                        <button
+                            type="button"
+                            className={`channel-type-btn ${draftType === "voice" ? "active" : ""}`}
+                            onClick={() => setDraftType("voice")}
+                        >
+                            Voice
+                        </button>
+                        <button type="submit" className="channel-create-submit">
+                            Create
+                        </button>
+                    </div>
+                </form>
+            )}
 
             {/* Channel list */}
             <div className="channel-list">
-                {categories.map((category) => {
-                    const catChannels = channels.filter((c) => c.category === category);
+                {groupedChannels.map(({ category, channels: categoryChannels }) => {
                     const isCollapsed = collapsed[category] ?? false;
 
                     return (
@@ -117,10 +175,11 @@ export function ChannelSidebar({
 
                             {!isCollapsed && (
                                 <div className="category-channels">
-                                    {catChannels.map((channel) => {
+                                    {categoryChannels.map((channel) => {
                                         const active = channel.id === activeChannelId;
                                         return (
                                             <button
+                                                type="button"
                                                 key={channel.id}
                                                 onClick={() => onChannelSelect(channel.id)}
                                                 className={`channel-item ${active ? "active" : ""}`}
