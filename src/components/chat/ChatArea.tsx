@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { type Channel, type ChatMessage } from "@/data/mockData";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import type { Channel, ChatMessage } from "@/types/chat";
 
 /* ── SVG Icons ── */
 const PinIcon = () => (
@@ -41,20 +41,27 @@ const GifIcon = () => (
     </svg>
 );
 
+const SendIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 2L11 13" />
+        <path d="M22 2L15 22L11 13L2 9L22 2Z" />
+    </svg>
+);
+
 /* Hover action for messages */
 const MessageActions = () => (
     <div className="message-actions">
-        <button className="msg-action-btn" title="Add Reaction">
+        <button type="button" className="msg-action-btn" title="Add Reaction">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9.01" y2="9" strokeWidth="2.5" /><line x1="15" y1="9" x2="15.01" y2="9" strokeWidth="2.5" />
             </svg>
         </button>
-        <button className="msg-action-btn" title="Reply">
+        <button type="button" className="msg-action-btn" title="Reply">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 17 4 12 9 7" /><path d="M20 18v-2a4 4 0 00-4-4H4" />
             </svg>
         </button>
-        <button className="msg-action-btn" title="More">
+        <button type="button" className="msg-action-btn" title="More">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
             </svg>
@@ -62,15 +69,77 @@ const MessageActions = () => (
     </div>
 );
 
+const formatMessageTime = (createdAt: number) => {
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const now = new Date();
+    const today = now.toDateString();
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(now.getDate() - 1);
+
+    const time = date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+    });
+
+    if (date.toDateString() === today) {
+        return `Today at ${time}`;
+    }
+
+    if (date.toDateString() === yesterdayDate.toDateString()) {
+        return `Yesterday at ${time}`;
+    }
+
+    return `${date.toLocaleDateString()} at ${time}`;
+};
+
 type ChatAreaProps = {
-    channel: Channel;
+    channel: Channel | null;
     messages: ChatMessage[];
     showMembers: boolean;
     onToggleMembers: () => void;
+    onSendMessage: (body: string) => Promise<void>;
+    sendingMessage: boolean;
 };
 
-export function ChatArea({ channel, messages, showMembers, onToggleMembers }: ChatAreaProps) {
+export function ChatArea({
+    channel,
+    messages,
+    showMembers,
+    onToggleMembers,
+    onSendMessage,
+    sendingMessage,
+}: ChatAreaProps) {
     const [inputValue, setInputValue] = useState("");
+    const endRef = useRef<HTMLDivElement | null>(null);
+    const isVoiceChannel = channel?.type === "voice";
+    const canSend = Boolean(channel) && !isVoiceChannel;
+
+    useEffect(() => {
+        endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, [messages.length, channel?.id]);
+
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!canSend) {
+            return;
+        }
+
+        const nextValue = inputValue.trim();
+        if (!nextValue) {
+            return;
+        }
+
+        try {
+            await onSendMessage(nextValue);
+            setInputValue("");
+        } catch {
+            // Store handles error reporting; keep input so users can retry.
+        }
+    };
 
     return (
         <section className="chat-area">
@@ -78,8 +147,8 @@ export function ChatArea({ channel, messages, showMembers, onToggleMembers }: Ch
             <header className="chat-header">
                 <div className="chat-header-left">
                     <span className="chat-header-hash">#</span>
-                    <span className="chat-header-name">{channel.name}</span>
-                    {channel.topic && (
+                    <span className="chat-header-name">{channel?.name ?? "No channel selected"}</span>
+                    {channel?.topic && (
                         <>
                             <span className="chat-header-divider" />
                             <span className="chat-header-topic">{channel.topic}</span>
@@ -87,9 +156,10 @@ export function ChatArea({ channel, messages, showMembers, onToggleMembers }: Ch
                     )}
                 </div>
                 <div className="chat-header-actions">
-                    <button className="header-action-btn" title="Pinned Messages"><PinIcon /></button>
-                    <button className="header-action-btn" title="Search"><SearchIcon /></button>
+                    <button type="button" className="header-action-btn" title="Pinned Messages"><PinIcon /></button>
+                    <button type="button" className="header-action-btn" title="Search"><SearchIcon /></button>
                     <button
+                        type="button"
                         className={`header-action-btn ${showMembers ? "active" : ""}`}
                         title="Members"
                         onClick={onToggleMembers}
@@ -106,45 +176,69 @@ export function ChatArea({ channel, messages, showMembers, onToggleMembers }: Ch
                     <div className="welcome-icon">
                         <span>#</span>
                     </div>
-                    <h2>Welcome to #{channel.name}</h2>
-                    <p>This is the start of the #{channel.name} channel. {channel.topic}</p>
+                    <h2>
+                        {channel
+                            ? `Welcome to #${channel.name}`
+                            : "Create a server or channel to get started"}
+                    </h2>
+                    <p>
+                        {channel
+                            ? `This is the start of #${channel.name}. ${channel.topic || "No topic yet."}`
+                            : "Your chat history will load from the local SQLite database."}
+                    </p>
                 </div>
 
                 {messages.map((msg) => (
                     <article key={msg.id} className="chat-message">
                         <div className="message-avatar">
-                            <span>{msg.avatar}</span>
+                            <span>{msg.avatar || msg.author.slice(0, 2).toUpperCase()}</span>
                         </div>
                         <div className="message-content">
                             <div className="message-header">
                                 <span className="message-author">{msg.author}</span>
-                                <span className="message-time">{msg.time}</span>
+                                <span className="message-time">{formatMessageTime(msg.createdAt)}</span>
                             </div>
                             <p className="message-body">{msg.body}</p>
                         </div>
                         <MessageActions />
                     </article>
                 ))}
+                <div ref={endRef} />
             </div>
 
             {/* Input bar */}
             <div className="chat-input-container">
-                <div className="chat-input-bar">
-                    <button className="input-action-btn" title="Attach">
+                <form className="chat-input-bar" onSubmit={handleSubmit}>
+                    <button type="button" className="input-action-btn" title="Attach" disabled={!channel}>
                         <PlusCircleIcon />
                     </button>
                     <input
                         type="text"
                         className="chat-input"
-                        placeholder={`Message #${channel.name}`}
+                        placeholder={
+                            isVoiceChannel
+                                ? "Text chat is disabled for voice channels"
+                                : channel
+                                    ? `Message #${channel.name}`
+                                    : "Select a channel to start chatting"
+                        }
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
+                        disabled={!canSend || sendingMessage}
                     />
                     <div className="input-right-actions">
-                        <button className="input-action-btn" title="GIF"><GifIcon /></button>
-                        <button className="input-action-btn" title="Emoji"><EmojiIcon /></button>
+                        <button type="button" className="input-action-btn" title="GIF" disabled={!canSend}><GifIcon /></button>
+                        <button type="button" className="input-action-btn" title="Emoji" disabled={!canSend}><EmojiIcon /></button>
+                        <button
+                            type="submit"
+                            className="chat-send-btn"
+                            title="Send message"
+                            disabled={!canSend || sendingMessage || !inputValue.trim()}
+                        >
+                            <SendIcon />
+                        </button>
                     </div>
-                </div>
+                </form>
             </div>
         </section>
     );

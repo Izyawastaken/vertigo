@@ -1,6 +1,6 @@
 "use client";
 
-import { type Server, type ServerId } from "@/data/mockData";
+import type { Server } from "@/types/chat";
 
 /* ── SVG Icons ── */
 const HomeIcon = () => (
@@ -15,8 +15,8 @@ const HomeIcon = () => (
 
 type ServerRailProps = {
     servers: Server[];
-    activeServerId: ServerId;
-    onServerSelect: (id: ServerId) => void;
+    activeServerId: string | null;
+    onServerSelect: (id: string) => void;
 };
 
 export function ServerRail({ servers, activeServerId, onServerSelect }: ServerRailProps) {

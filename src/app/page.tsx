@@ -1,30 +1,71 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { AppIntro } from "@/components/intro/AppIntro";
 import { ChannelSidebar } from "@/components/chat/ChannelSidebar";
 import { ChatArea } from "@/components/chat/ChatArea";
 import { MemberList } from "@/components/chat/MemberList";
 import { ServerBrowser } from "@/components/chat/ServerBrowser";
-import {
-  SERVERS,
-  CHANNELS_BY_SERVER,
-  CHAT_BY_CHANNEL,
-  MEMBERS,
-  FALLBACK_CHANNEL,
-  type ServerId,
-} from "@/data/mockData";
+import type { CreateChannelDraft } from "@/types/chat";
+import { useChatStore } from "@/stores/useChatStore";
 
 export default function Home() {
-  const [introDone, setIntroDone] = useState(false);
-  const [activeServerId, setActiveServerId] = useState<ServerId>(SERVERS[0].id);
-  const [activeChannelId, setActiveChannelId] = useState(
-    CHANNELS_BY_SERVER[SERVERS[0].id][0]?.id ?? ""
+  const {
+    initialized,
+    loading,
+    sendingMessage,
+    error,
+    introDone,
+    servers,
+    members,
+    channelsByServer,
+    messagesByChannel,
+    activeServerId,
+    activeChannelId,
+    membersPinned,
+    membersHover,
+    setIntroDone,
+    setMembersPinned,
+    setMembersHover,
+    initialize,
+    selectServer,
+    selectChannel,
+    createServer,
+    createChannel,
+    sendMessage,
+  } = useChatStore(
+    useShallow((state) => ({
+      initialized: state.initialized,
+      loading: state.loading,
+      sendingMessage: state.sendingMessage,
+      error: state.error,
+      introDone: state.introDone,
+      servers: state.servers,
+      members: state.members,
+      channelsByServer: state.channelsByServer,
+      messagesByChannel: state.messagesByChannel,
+      activeServerId: state.activeServerId,
+      activeChannelId: state.activeChannelId,
+      membersPinned: state.membersPinned,
+      membersHover: state.membersHover,
+      setIntroDone: state.setIntroDone,
+      setMembersPinned: state.setMembersPinned,
+      setMembersHover: state.setMembersHover,
+      initialize: state.initialize,
+      selectServer: state.selectServer,
+      selectChannel: state.selectChannel,
+      createServer: state.createServer,
+      createChannel: state.createChannel,
+      sendMessage: state.sendMessage,
+    }))
   );
 
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
   /* ── Member panel: pinned (button toggle) vs hover (glance) ── */
-  const [membersPinned, setMembersPinned] = useState(false);
-  const [membersHover, setMembersHover] = useState(false);
   const dismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const membersOpen = membersPinned || membersHover;
@@ -38,6 +79,45 @@ export default function Home() {
     }
   }, []);
 
+  const activeServer = useMemo(
+    () => servers.find((server) => server.id === activeServerId) ?? null,
+    [servers, activeServerId]
+  );
+
+  const channels = useMemo(
+    () => (activeServerId ? channelsByServer[activeServerId] ?? [] : []),
+    [channelsByServer, activeServerId]
+  );
+
+  const activeChannel = useMemo(() => {
+    if (!channels.length) {
+      return null;
+    }
+
+    return channels.find((channel) => channel.id === activeChannelId) ?? channels[0];
+  }, [channels, activeChannelId]);
+
+  const messages = useMemo(
+    () => (activeChannel ? messagesByChannel[activeChannel.id] ?? [] : []),
+    [messagesByChannel, activeChannel]
+  );
+
+  useEffect(() => {
+    if (!initialized || activeServerId || !servers[0]) {
+      return;
+    }
+
+    void selectServer(servers[0].id);
+  }, [initialized, activeServerId, servers, selectServer]);
+
+  useEffect(() => {
+    if (!activeChannel || activeChannel.id === activeChannelId) {
+      return;
+    }
+
+    void selectChannel(activeChannel.id);
+  }, [activeChannel, activeChannelId, selectChannel]);
+
   /** Schedule a dismiss after `ms` (only for hover mode) */
   const scheduleDismiss = useCallback(
     (ms: number) => {
@@ -47,15 +127,15 @@ export default function Home() {
         dismissTimer.current = null;
       }, ms);
     },
-    [clearDismiss]
+    [clearDismiss, setMembersHover]
   );
 
   /* Toggle button in header */
   const handleToggleMembers = useCallback(() => {
     clearDismiss();
-    setMembersPinned((v) => !v);
+    setMembersPinned(!membersPinned);
     setMembersHover(false);
-  }, [clearDismiss]);
+  }, [clearDismiss, membersPinned, setMembersPinned, setMembersHover]);
 
   /* Right-edge hover trigger */
   const handleTriggerEnter = useCallback(() => {
@@ -66,7 +146,7 @@ export default function Home() {
       setMembersHover(true);
       dismissTimer.current = null;
     }, 200);
-  }, [membersPinned, clearDismiss]);
+  }, [membersPinned, clearDismiss, setMembersHover]);
 
   const handleTriggerLeave = useCallback(() => {
     if (membersPinned) return;
@@ -89,63 +169,80 @@ export default function Home() {
   /* Sheet's own onOpenChange (e.g. pressing Escape) */
   const handleOpenChange = useCallback(
     (open: boolean) => {
-      if (!open) {
-        clearDismiss();
-        setMembersPinned(false);
-        setMembersHover(false);
-      }
+    if (!open) {
+      clearDismiss();
+      setMembersPinned(false);
+      setMembersHover(false);
+    }
     },
-    [clearDismiss]
+    [clearDismiss, setMembersPinned, setMembersHover]
   );
 
-  /* ── Standard routing state ── */
-  const activeServer = useMemo(
-    () => SERVERS.find((s) => s.id === activeServerId) ?? SERVERS[0],
-    [activeServerId]
+  const handleServerSelect = useCallback(
+    (serverId: string) => {
+      void selectServer(serverId);
+    },
+    [selectServer]
   );
 
-  const channels = CHANNELS_BY_SERVER[activeServerId];
-
-  const activeChannel = useMemo(
-    () =>
-      channels.find((c) => c.id === activeChannelId) ??
-      channels[0] ??
-      FALLBACK_CHANNEL,
-    [activeChannelId, channels]
+  const handleChannelSelect = useCallback(
+    (channelId: string) => {
+      void selectChannel(channelId);
+    },
+    [selectChannel]
   );
 
-  const messages = CHAT_BY_CHANNEL[activeChannel.id] ?? [];
+  const handleCreateServer = useCallback(
+    (label: string) => {
+      void createServer(label);
+    },
+    [createServer]
+  );
 
-  const handleServerSelect = (serverId: ServerId) => {
-    setActiveServerId(serverId);
-    const first = CHANNELS_BY_SERVER[serverId][0];
-    if (first) setActiveChannelId(first.id);
-  };
+  const handleCreateChannel = useCallback(
+    (draft: CreateChannelDraft) => {
+      void createChannel(draft);
+    },
+    [createChannel]
+  );
+
+  const handleSendMessage = useCallback(
+    async (body: string) => {
+      await sendMessage(body);
+    },
+    [sendMessage]
+  );
 
   return (
     <main className="relative h-screen w-full overflow-hidden">
       {introDone && (
         <>
-          <div className="app-shell">
-            <ChannelSidebar
-              server={activeServer}
-              channels={channels}
-              activeChannelId={activeChannel.id}
-              onChannelSelect={setActiveChannelId}
-            />
-            <ChatArea
-              channel={activeChannel}
-              messages={messages}
-              showMembers={membersPinned}
-              onToggleMembers={handleToggleMembers}
-            />
-          </div>
+          {activeServer && (
+            <div className="app-shell">
+              <ChannelSidebar
+                server={activeServer}
+                channels={channels}
+                activeChannelId={activeChannel?.id ?? ""}
+                onChannelSelect={handleChannelSelect}
+                onCreateChannel={handleCreateChannel}
+              />
+              <ChatArea
+                channel={activeChannel}
+                messages={messages}
+                showMembers={membersPinned}
+                onToggleMembers={handleToggleMembers}
+                onSendMessage={handleSendMessage}
+                sendingMessage={sendingMessage}
+              />
+            </div>
+          )}
 
           {/* Top-center notch for server browser */}
           <ServerBrowser
-            servers={SERVERS}
+            servers={servers}
             activeServerId={activeServerId}
             onServerSelect={handleServerSelect}
+            onCreateServer={handleCreateServer}
           />
 
           {/* Right-edge hover trigger for glancing at member list */}
@@ -158,13 +255,20 @@ export default function Home() {
           )}
 
           <MemberList
-            members={MEMBERS}
+            members={members}
             open={membersOpen}
             onOpenChange={handleOpenChange}
             isHoverMode={isHoverMode}
             onMouseEnter={handleSheetEnter}
             onMouseLeave={handleSheetLeave}
           />
+
+          {(loading || error) && (
+            <div className="app-status-banner">
+              {loading && <span>Syncing workspace...</span>}
+              {!loading && error && <span>{error}</span>}
+            </div>
+          )}
         </>
       )}
 

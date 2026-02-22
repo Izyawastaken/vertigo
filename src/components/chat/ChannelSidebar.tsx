@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { type Channel, type ServerId, type Server } from "@/data/mockData";
+import type { Channel, CreateChannelDraft, Server } from "@/types/chat";
 
 /* ── SVG Icons ── */
 const ChevronIcon = ({ open }: { open: boolean }) => (
@@ -52,9 +52,16 @@ type ChannelSidebarProps = {
     channels: Channel[];
     activeChannelId: string;
     onChannelSelect: (id: string) => void;
+    onCreateChannel: (draft: CreateChannelDraft) => void;
 };
 
-export function ChannelSidebar({ server, channels, activeChannelId, onChannelSelect }: ChannelSidebarProps) {
+export function ChannelSidebar({
+    server,
+    channels,
+    activeChannelId,
+    onChannelSelect,
+    onCreateChannel,
+}: ChannelSidebarProps) {
     const categories = Array.from(new Set(channels.map((c) => c.category)));
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -62,14 +69,34 @@ export function ChannelSidebar({ server, channels, activeChannelId, onChannelSel
         setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }));
     };
 
+    const handleCreateChannel = () => {
+        const name = window.prompt("Channel name");
+        if (!name) {
+            return;
+        }
+
+        const createVoice = window.confirm(
+            "Create a voice channel? Click OK for voice, Cancel for text."
+        );
+
+        onCreateChannel({
+            name,
+            type: createVoice ? "voice" : "text",
+            category: createVoice ? "Voice Channels" : "Text Channels",
+        });
+    };
+
     return (
         <aside className="channel-sidebar">
             {/* Server header */}
             <div className="sidebar-header">
                 <span className="sidebar-server-name">{server.label}</span>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" opacity="0.6">
-                    <path d="M3.5 5.5L7 9L10.5 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <button className="sidebar-create-btn" onClick={handleCreateChannel} title="Create channel">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <line x1="7" y1="3" x2="7" y2="11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                        <line x1="3" y1="7" x2="11" y2="7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                </button>
             </div>
 
             {/* Channel list */}

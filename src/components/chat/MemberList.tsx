@@ -1,6 +1,6 @@
 "use client";
 
-import { type Member, STATUS_COLOR } from "@/data/mockData";
+import { STATUS_COLOR, type Member } from "@/types/chat";
 import {
     Sheet,
     SheetContent,

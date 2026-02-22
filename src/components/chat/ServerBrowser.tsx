@@ -1,15 +1,21 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { type Server, type ServerId } from "@/data/mockData";
+import type { Server } from "@/types/chat";
 
 type ServerBrowserProps = {
     servers: Server[];
-    activeServerId: ServerId;
-    onServerSelect: (id: ServerId) => void;
+    activeServerId: string | null;
+    onServerSelect: (id: string) => void;
+    onCreateServer: (label: string) => void;
 };
 
-export function ServerBrowser({ servers, activeServerId, onServerSelect }: ServerBrowserProps) {
+export function ServerBrowser({
+    servers,
+    activeServerId,
+    onServerSelect,
+    onCreateServer,
+}: ServerBrowserProps) {
     const [expanded, setExpanded] = useState(false);
     const [showItems, setShowItems] = useState(false);
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,12 +46,9 @@ export function ServerBrowser({ servers, activeServerId, onServerSelect }: Serve
 
     /* After container finishes expanding, pop in items */
     useEffect(() => {
-        if (expanded) {
-            const t = setTimeout(() => setShowItems(true), 450);
-            return () => clearTimeout(t);
-        } else {
-            setShowItems(false);
-        }
+        if (!expanded) return;
+        const t = setTimeout(() => setShowItems(true), 450);
+        return () => clearTimeout(t);
     }, [expanded]);
 
     /* Escape key */
@@ -67,13 +70,24 @@ export function ServerBrowser({ servers, activeServerId, onServerSelect }: Serve
     }, []);
 
     const handleSelect = useCallback(
-        (id: ServerId) => {
+        (id: string) => {
             onServerSelect(id);
             setShowItems(false);
             setTimeout(() => setExpanded(false), 150);
         },
         [onServerSelect]
     );
+
+    const handleCreateServer = useCallback(() => {
+        const label = window.prompt("Server name");
+        if (!label) {
+            return;
+        }
+
+        onCreateServer(label);
+        setShowItems(false);
+        setTimeout(() => setExpanded(false), 150);
+    }, [onCreateServer]);
 
     return (
         <div
@@ -127,6 +141,7 @@ export function ServerBrowser({ servers, activeServerId, onServerSelect }: Serve
                         <button
                             className={`server-grid-item add-server ${showItems ? "pop-in" : ""}`}
                             style={{ animationDelay: showItems ? `${servers.length * 80}ms` : "0ms" }}
+                            onClick={handleCreateServer}
                         >
                             <div className="server-grid-circle add">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

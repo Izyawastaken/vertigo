@@ -314,6 +314,25 @@ body {
   text-overflow: ellipsis;
 }
 
+.sidebar-create-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.sidebar-create-btn:hover {
+  background: var(--bg-modifier-hover);
+  color: var(--text-secondary);
+}
+
 .channel-list {
   flex: 1;
   overflow-y: auto;
@@ -768,6 +787,36 @@ body {
   color: var(--text-secondary);
 }
 
+.input-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  color: #000;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.chat-send-btn:hover {
+  background: #d8d8d8;
+  transform: translateY(-1px);
+}
+
+.chat-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .input-right-actions {
   display: flex;
   gap: 0;
@@ -1085,6 +1134,25 @@ body {
 .server-close-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   transform: translateX(-50%) scale(1.08);
+}
+
+.app-status-banner {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 120;
+  min-width: 220px;
+  max-width: 70vw;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: rgba(10, 10, 10, 0.92);
+  color: var(--text-secondary);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
 }
 
 @keyframes springPopIn {
